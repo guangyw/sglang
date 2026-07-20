@@ -1,6 +1,7 @@
 import os
 import threading
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest

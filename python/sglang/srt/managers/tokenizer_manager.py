@@ -113,10 +113,8 @@ from sglang.srt.observability.trace import SpanAttributes, extract_trace_headers
 from sglang.srt.runtime_context import (
     get_device,
     get_disagg,
-    get_exec,
     get_lora,
     get_memory,
-    get_mm,
     get_model,
     get_observability,
     get_parallel,
@@ -1059,7 +1057,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
             self._validate_token_ids_logprob(obj)
             if (
                 obj.return_hidden_states
-                and not get_exec().features.enable_return_hidden_states
+                and not self.server_args.enable_return_hidden_states
             ):
                 raise ValueError(
                     "The server is not configured to return the hidden states. "
@@ -1067,7 +1065,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
                 )
             if (
                 obj.custom_logit_processor
-                and not get_exec().features.enable_custom_logit_processor
+                and not self.server_args.enable_custom_logit_processor
             ):
                 raise ValueError(
                     "The server is not configured to enable custom logit processor. "
@@ -1077,10 +1075,10 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
     def _validate_mm_limits(
         self, obj: Union[GenerateReqInput, EmbeddingReqInput]
     ) -> None:
-        if not get_mm().limit_mm_data_per_request:
+        if not self.server_args.limit_mm_data_per_request:
             return
 
-        for modality, limit in get_mm().limit_mm_data_per_request.items():
+        for modality, limit in self.server_args.limit_mm_data_per_request.items():
             data = getattr(obj, f"{modality}_data", None)
             if data:
                 count = len(data) if isinstance(data, list) else 1
@@ -1188,7 +1186,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
             bootstrap_room = obj.bootstrap_room
             if (
                 bootstrap_room is None
-                and get_disagg().disaggregation_transfer_backend == "fake"
+                and self.server_args.disaggregation_transfer_backend == "fake"
             ):
                 bootstrap_room = self.fake_bootstrap_room_counter
                 self.fake_bootstrap_room_counter += 1
@@ -1368,7 +1366,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
         - Batch tokenization does not support DP attention yet, and it will make everything goes to the first rank currently
         """
         return batch_size > 0 and (
-            get_serving().enable_tokenizer_batch_encode
+            self.server_args.enable_tokenizer_batch_encode
             or (
                 (not get_parallel().enable_dp_attention)
                 and (not self._batch_has_text(batch_size, requests))

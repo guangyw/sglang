@@ -8,7 +8,6 @@ import torch
 from sglang.srt.configs.model_config import is_cross_encoding_pooler_model
 from sglang.srt.managers.embed_types import PositionalEmbeds
 from sglang.srt.managers.io_struct import EmbeddingReqInput, GenerateReqInput
-from sglang.srt.runtime_context import get_exec
 from sglang.srt.server_args import MIS_DELIMITER_TOKEN_ID
 
 logger = logging.getLogger(__name__)
@@ -598,8 +597,11 @@ class TokenizerManagerScoreMixin:
                         f"Token ID {token_id} is out of vocabulary (vocab size: {vocab_size})"
                     )
 
-        # Check if multi-item scoring is enabled
-        use_multi_item_scoring = get_exec().features.enable_mis
+        # Check if multi-item scoring is enabled. enable_mis is a static startup
+        # feature flag (never overridden post-publish), and score_request is also
+        # exercised on a bare mixin without a published context, so read it off
+        # server_args rather than the resolved-config bag.
+        use_multi_item_scoring = self.server_args.enable_mis
 
         input_ids = None
         text_prompts = None
